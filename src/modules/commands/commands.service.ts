@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { MembersService } from '../members/members.service';
 import { CotisationsService } from '../cotisations/cotisations.service';
+import { TypeCotisation, ModePaiement, Source } from '@shared/enums';
 
 /**
  * Service de traitement des commandes WhatsApp
@@ -152,9 +153,9 @@ export class CommandsService {
         membreId: membre.id,
         montant,
         moisConcerne: mois.toUpperCase(),
-        typeCotisation: 'MENSUELLE',
-        modePaiement: 'CASH',
-        source: 'ENCAISSEUR',
+        typeCotisation: TypeCotisation.MENSUELLE,
+        modePaiement: ModePaiement.CASH,
+        source: Source.ENCAISSEUR,
         encaisseurId: encaisseur.id,
       });
 

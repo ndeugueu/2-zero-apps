@@ -53,6 +53,15 @@ export class MembersService {
     return membre;
   }
 
+  async findByTelephone(telephone: string) {
+    const normalizedPhone = normalizePhoneNumber(telephone);
+    const membre = await this.repository.findByTelephone(normalizedPhone);
+    if (!membre) {
+      throw new NotFoundException('Membre non trouvé');
+    }
+    return membre;
+  }
+
   async update(id: string, dto: UpdateMemberDto) {
     await this.findById(id); // Vérifier existence
 

@@ -6,7 +6,6 @@ import makeWASocket, {
   proto,
 } from '@whiskeysockets/baileys';
 import { Boom } from '@hapi/boom';
-import * as QRCode from 'qrcode-terminal';
 import { CommandsService } from '../commands/commands.service';
 
 /**
@@ -33,15 +32,6 @@ export class WhatsAppClientService implements OnModuleInit {
     this.sock = makeWASocket({
       auth: state,
       printQRInTerminal: true, // Affiche le QR code dans le terminal
-      logger: {
-        level: 'info',
-        fatal: (msg) => this.logger.error(msg),
-        error: (msg) => this.logger.error(msg),
-        warn: (msg) => this.logger.warn(msg),
-        info: (msg) => this.logger.log(msg),
-        debug: (msg) => this.logger.debug(msg),
-        trace: (msg) => this.logger.verbose(msg),
-      },
     });
 
     // Gestion de la connexion
@@ -50,7 +40,7 @@ export class WhatsAppClientService implements OnModuleInit {
 
       if (qr) {
         this.logger.log('QR Code reçu, scannez-le avec WhatsApp');
-        QRCode.generate(qr, { small: true });
+        this.logger.log('Le QR code est affiché dans le terminal (printQRInTerminal: true)');
       }
 
       if (connection === 'close') {
@@ -95,7 +85,13 @@ export class WhatsAppClientService implements OnModuleInit {
 
     if (!messageText) return;
 
-    const senderNumber = message.key.remoteJid?.replace('@s.whatsapp.net', '');
+    const senderNumber = message.key.remoteJid?.replace('@s.whatsapp.net', '') || '';
+    const remoteJid = message.key.remoteJid || '';
+
+    if (!senderNumber || !remoteJid) {
+      this.logger.warn('Message sans expéditeur valide');
+      return;
+    }
 
     this.logger.log(`Message reçu de ${senderNumber}: ${messageText}`);
 
@@ -107,11 +103,11 @@ export class WhatsAppClientService implements OnModuleInit {
       );
 
       // Envoyer la réponse
-      await this.sendMessage(message.key.remoteJid, response);
+      await this.sendMessage(remoteJid, response);
     } catch (error) {
       this.logger.error('Erreur lors du traitement du message:', error);
       await this.sendMessage(
-        message.key.remoteJid,
+        remoteJid,
         '❌ Erreur lors du traitement de votre demande. Tapez AIDE pour voir les commandes disponibles.',
       );
     }
