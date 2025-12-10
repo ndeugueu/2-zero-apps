@@ -1,0 +1,188 @@
+// Prisma schema for 2-0 3F WhatsApp Bot
+// Database: PostgreSQL 15+
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum Role {
+  MEMBRE
+  ENCAISSEUR
+  ADMIN
+  CAPITAINE
+}
+
+enum StatutMembre {
+  ACTIF
+  INACTIF
+}
+
+enum ModePaiement {
+  CASH
+  VIREMENT
+  HISTORIQUE
+}
+
+enum Source {
+  HISTORIQUE
+  MEMBRE
+  ENCAISSEUR
+}
+
+enum TypeCotisation {
+  MENSUELLE
+  RETARD
+  DON
+}
+
+enum StatutCotisation {
+  EN_ATTENTE_VALIDATION
+  CONFIRME
+  ANNULE
+}
+
+enum StatutRetard {
+  NON_REGLE
+  PARTIEL
+  REGLE
+}
+
+enum PermissionType {
+  VIEW_ETAT_MEMBRES
+  VIEW_CAISSE
+}
+
+// ============================================
+// MODELS
+// ============================================
+
+/// Table Membres - Membres de l'association
+model Membre {
+  id           String        @id @default(uuid())
+  nom          String
+  prenom       String
+  codeMembre   String        @unique @map("code_membre") // "NOM PRENOM" normalisé
+  telephone    String        @unique
+  role         Role          @default(MEMBRE)
+  statut       StatutMembre  @default(ACTIF)
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  cotisations         Cotisation[]    @relation("MemberCotisations")
+  cotisationsEncaissees Cotisation[] @relation("EncaisseurCotisations")
+  retards             Retard[]
+  depenses            Depense[]
+  permissions         PermissionSpeciale[]
+  cotisationsUpdatedBy Cotisation[]  @relation("UpdatedByMember")
+  compteUpdatedBy     AssociationCompte[] @relation("CompteUpdatedBy")
+
+  @@index([codeMembre])
+  @@index([telephone])
+  @@index([role])
+  @@map("membres")
+}
+
+/// Table Cotisations - Cotisations des membres
+model Cotisation {
+  id                  String           @id @default(uuid())
+  membreId            String           @map("membre_id")
+  dateEnregistrement  DateTime         @default(now()) @map("date_enregistrement")
+  moisConcerne        String           @map("mois_concerne") // "JANVIER", "FEVRIER", etc.
+  montant             Decimal          @db.Decimal(10, 2)
+  modePaiement        ModePaiement     @map("mode_paiement")
+  source              Source
+  typeCotisation      TypeCotisation   @map("type_cotisation")
+  statut              StatutCotisation @default(CONFIRME)
+  encaisseurId        String?          @map("encaisseur_id")
+  motif               String?          // Pour les DON
+  updatedAt           DateTime         @updatedAt @map("updated_at")
+  updatedBy           String?          @map("updated_by")
+
+  // Relations
+  membre              Membre           @relation("MemberCotisations", fields: [membreId], references: [id], onDelete: Restrict)
+  encaisseur          Membre?          @relation("EncaisseurCotisations", fields: [encaisseurId], references: [id])
+  updatedByMember     Membre?          @relation("UpdatedByMember", fields: [updatedBy], references: [id])
+
+  @@index([membreId])
+  @@index([encaisseurId])
+  @@index([statut])
+  @@index([typeCotisation])
+  @@index([dateEnregistrement])
+  @@index([moisConcerne])
+
+  // Contrainte unique pour éviter doublons
+  @@unique([membreId, moisConcerne, typeCotisation, statut])
+
+  @@map("cotisations")
+}
+
+/// Table Retards - Retards déclarés (gestion 2 étapes)
+model Retard {
+  id              String        @id @default(uuid())
+  membreId        String        @map("membre_id")
+  moisConcerne    String        @map("mois_concerne")
+  montantDu       Decimal       @db.Decimal(10, 2) @map("montant_du")
+  statut          StatutRetard  @default(NON_REGLE)
+  dateCreation    DateTime      @default(now()) @map("date_creation")
+  dateReglement   DateTime?     @map("date_reglement")
+
+  // Relations
+  membre          Membre        @relation(fields: [membreId], references: [id], onDelete: Restrict)
+
+  @@unique([membreId, moisConcerne])
+  @@index([statut])
+  @@map("retards")
+}
+
+/// Table Depenses - Dépenses des encaisseurs
+model Depense {
+  id              String   @id @default(uuid())
+  encaisseurId    String   @map("encaisseur_id")
+  montant         Decimal  @db.Decimal(10, 2)
+  motif           String
+  dateDepense     DateTime @default(now()) @map("date_depense")
+
+  // Relations
+  encaisseur      Membre   @relation(fields: [encaisseurId], references: [id], onDelete: Restrict)
+
+  @@index([encaisseurId])
+  @@index([dateDepense])
+  @@map("depenses")
+}
+
+/// Table AssociationCompte - Solde bancaire association (Singleton)
+model AssociationCompte {
+  id                Int      @id @default(1) // Force singleton
+  soldeBancaire     Decimal  @default(0) @db.Decimal(12, 2) @map("solde_bancaire")
+  dateMiseAJour     DateTime @updatedAt @map("date_mise_a_jour")
+  misAJourPar       String?  @map("mis_a_jour_par")
+
+  // Relations
+  updatedBy         Membre?  @relation("CompteUpdatedBy", fields: [misAJourPar], references: [id])
+
+  @@map("association_compte")
+}
+
+/// Table PermissionsSpeciales - Permissions spécifiques par membre
+model PermissionSpeciale {
+  id          String          @id @default(uuid())
+  membreId    String          @map("membre_id")
+  permission  PermissionType
+
+  // Relations
+  membre      Membre          @relation(fields: [membreId], references: [id], onDelete: Cascade)
+
+  @@unique([membreId, permission])
+  @@map("permissions_speciales")
+}
