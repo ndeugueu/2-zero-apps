@@ -38,6 +38,9 @@ export class WhatsAppClientService implements OnModuleInit {
     this.sock.ev.on('connection.update', async (update) => {
       const { connection, lastDisconnect, qr } = update;
 
+      // Debug: log all update events
+      this.logger.debug(`Connection update: ${JSON.stringify({ connection, hasQr: !!qr, hasError: !!lastDisconnect })}`);
+
       if (qr) {
         this.logger.log('📱 QR Code reçu ! Scannez-le avec WhatsApp:');
         this.logger.log('-------------------------------------------');
