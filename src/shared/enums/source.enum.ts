@@ -1,0 +1,5 @@
+export enum Source {
+  HISTORIQUE = 'HISTORIQUE',
+  MEMBRE = 'MEMBRE',
+  ENCAISSEUR = 'ENCAISSEUR',
+}
