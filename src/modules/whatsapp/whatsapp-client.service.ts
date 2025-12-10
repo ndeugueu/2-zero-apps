@@ -6,6 +6,7 @@ import makeWASocket, {
   proto,
 } from '@whiskeysockets/baileys';
 import { Boom } from '@hapi/boom';
+import * as qrcode from 'qrcode-terminal';
 import { CommandsService } from '../commands/commands.service';
 
 /**
@@ -31,7 +32,6 @@ export class WhatsAppClientService implements OnModuleInit {
 
     this.sock = makeWASocket({
       auth: state,
-      printQRInTerminal: true, // Affiche le QR code dans le terminal
     });
 
     // Gestion de la connexion
@@ -39,8 +39,11 @@ export class WhatsAppClientService implements OnModuleInit {
       const { connection, lastDisconnect, qr } = update;
 
       if (qr) {
-        this.logger.log('QR Code reçu, scannez-le avec WhatsApp');
-        this.logger.log('Le QR code est affiché dans le terminal (printQRInTerminal: true)');
+        this.logger.log('📱 QR Code reçu ! Scannez-le avec WhatsApp:');
+        this.logger.log('-------------------------------------------');
+        qrcode.generate(qr, { small: true });
+        this.logger.log('-------------------------------------------');
+        this.logger.log('📲 Ouvrez WhatsApp > Réglages > Appareils connectés > Connecter un appareil');
       }
 
       if (connection === 'close') {
