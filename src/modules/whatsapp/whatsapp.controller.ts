@@ -1,5 +1,7 @@
 import { Controller, Post, Get, HttpCode, HttpStatus } from '@nestjs/common';
 import { WhatsAppClientService } from './whatsapp-client.service';
+import * as fs from 'fs';
+import * as path from 'path';
 
 /**
  * Contrôleur pour la gestion de WhatsApp
@@ -57,5 +59,54 @@ export class WhatsAppController {
       timestamp: new Date().toISOString(),
       info: 'Consultez les logs Railway pour voir le QR code',
     };
+  }
+
+  /**
+   * Inspecter le contenu du dossier auth_info_baileys
+   * GET /whatsapp/inspect-auth
+   */
+  @Get('inspect-auth')
+  inspectAuthFolder() {
+    const authDir = path.join(process.cwd(), 'auth_info_baileys');
+
+    try {
+      // Vérifier si le dossier existe
+      if (!fs.existsSync(authDir)) {
+        return {
+          exists: false,
+          path: authDir,
+          message: 'Le dossier auth_info_baileys n\'existe pas',
+          timestamp: new Date().toISOString(),
+        };
+      }
+
+      // Lire le contenu du dossier
+      const files = fs.readdirSync(authDir);
+      const fileDetails = files.map(file => {
+        const filePath = path.join(authDir, file);
+        const stats = fs.statSync(filePath);
+        return {
+          name: file,
+          size: stats.size,
+          isFile: stats.isFile(),
+          modified: stats.mtime,
+        };
+      });
+
+      return {
+        exists: true,
+        path: authDir,
+        fileCount: files.length,
+        files: fileDetails,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      return {
+        error: true,
+        message: error.message,
+        path: authDir,
+        timestamp: new Date().toISOString(),
+      };
+    }
   }
 }
