@@ -26,12 +26,15 @@ async function bootstrap() {
   const port = process.env.PORT || 3000;
   await app.listen(port);
 
+  const whatsappMode = process.env.WHATSAPP_MODE || 'baileys';
+  const whatsappDisplay = whatsappMode === 'meta-cloud' ? 'Meta Cloud API' : 'Baileys';
+
   console.log(`
   🚀 Application démarrée avec succès!
   📍 URL: http://localhost:${port}
   🔧 Environnement: ${process.env.NODE_ENV || 'development'}
   💾 Database: PostgreSQL
-  📱 WhatsApp: Baileys
+  📱 WhatsApp: ${whatsappDisplay}
   `);
 }
 

@@ -26,7 +26,13 @@ export class WhatsAppClientService implements OnModuleInit {
   constructor(private readonly commandsService: CommandsService) {}
 
   async onModuleInit() {
-    await this.connectToWhatsApp();
+    // Ne se connecte que si le mode est "baileys"
+    const mode = process.env.WHATSAPP_MODE || 'baileys';
+    if (mode === 'baileys') {
+      await this.connectToWhatsApp();
+    } else {
+      this.logger.log(`⏭️  Mode WhatsApp: ${mode} - Baileys non initialisé`);
+    }
   }
 
   /**
